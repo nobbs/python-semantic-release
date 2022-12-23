@@ -41,7 +41,7 @@ class Base(object):
 
     @classmethod
     def post_release_changelog(
-        cls, owner: str, repo: str, version: str, changelog: str
+        cls, owner: str, repo: str, version: str, changelog: str, prerelease: bool
     ) -> bool:
         raise NotImplementedError
 
@@ -178,7 +178,7 @@ class Github(Base):
 
     @classmethod
     @LoggedFunction(logger)
-    def create_release(cls, owner: str, repo: str, tag: str, changelog: str) -> bool:
+    def create_release(cls, owner: str, repo: str, tag: str, changelog: str, prerelease: bool) -> bool:
         """Create a new release
 
         https://docs.github.com/rest/reference/repos#create-a-release
@@ -187,6 +187,7 @@ class Github(Base):
         :param repo: The repository name
         :param tag: Tag to create release for
         :param changelog: The release notes for this version
+        :param prerelease: Whether this is a prerelease
 
         :return: Whether the request succeeded
         """
@@ -198,7 +199,7 @@ class Github(Base):
                     "name": tag,
                     "body": changelog,
                     "draft": False,
-                    "prerelease": False,
+                    "prerelease": prerelease,
                 },
             )
             return True
@@ -256,7 +257,7 @@ class Github(Base):
     @classmethod
     @LoggedFunction(logger)
     def post_release_changelog(
-        cls, owner: str, repo: str, version: str, changelog: str
+        cls, owner: str, repo: str, version: str, changelog: str, prerelease: bool
     ) -> bool:
         """Post release changelog
 
@@ -264,12 +265,13 @@ class Github(Base):
         :param repo: The repository name
         :param version: The version number
         :param changelog: The release notes for this version
+        :param prerelease: Whether this is a prerelease
 
         :return: The status of the request
         """
         tag = get_formatted_tag(version)
         logger.debug(f"Attempting to create release for {tag}")
-        success = Github.create_release(owner, repo, tag, changelog)
+        success = Github.create_release(owner, repo, tag, changelog, prerelease)
 
         if not success:
             logger.debug("Unsuccessful, looking for an existing release to update")
@@ -484,7 +486,7 @@ class Gitea(Base):
 
     @classmethod
     @LoggedFunction(logger)
-    def create_release(cls, owner: str, repo: str, tag: str, changelog: str) -> bool:
+    def create_release(cls, owner: str, repo: str, tag: str, changelog: str, prerelease: bool) -> bool:
         """Create a new release
 
         https://gitea.com/api/swagger#/repository/repoCreateRelease
@@ -493,6 +495,7 @@ class Gitea(Base):
         :param repo: The repository name
         :param tag: Tag to create release for
         :param changelog: The release notes for this version
+        :param prerelease: Whether this is a prerelease
 
         :return: Whether the request succeeded
         """
@@ -504,7 +507,7 @@ class Gitea(Base):
                     "name": tag,
                     "body": changelog,
                     "draft": False,
-                    "prerelease": False,
+                    "prerelease": prerelease,
                 },
             )
             return True
@@ -562,7 +565,7 @@ class Gitea(Base):
     @classmethod
     @LoggedFunction(logger)
     def post_release_changelog(
-        cls, owner: str, repo: str, version: str, changelog: str
+        cls, owner: str, repo: str, version: str, changelog: str, prerelease: bool
     ) -> bool:
         """Post release changelog
 
@@ -570,12 +573,13 @@ class Gitea(Base):
         :param repo: The repository name
         :param version: The version number
         :param changelog: The release notes for this version
+        :param prerelease: Whether this is a prerelease
 
         :return: The status of the request
         """
         tag = get_formatted_tag(version)
         logger.debug(f"Attempting to create release for {tag}")
-        success = Gitea.create_release(owner, repo, tag, changelog)
+        success = Gitea.create_release(owner, repo, tag, changelog, prerelease)
 
         if not success:
             logger.debug("Unsuccessful, looking for an existing release to update")
@@ -730,7 +734,7 @@ class Gitlab(Base):
     @classmethod
     @LoggedFunction(logger)
     def post_release_changelog(
-        cls, owner: str, repo: str, version: str, changelog: str
+        cls, owner: str, repo: str, version: str, changelog: str, prerelease: bool
     ) -> bool:
         """Post release changelog
 
@@ -738,6 +742,7 @@ class Gitlab(Base):
         :param repo: The repository name
         :param version: The version number
         :param changelog: The release notes for this version
+        :param prerelease: Whether this is a prerelease
 
         :return: The status of the request
         """
@@ -792,7 +797,7 @@ def check_build_status(owner: str, repository: str, ref: str) -> bool:
     return get_hvcs().check_build_status(owner, repository, ref)
 
 
-def post_changelog(owner: str, repository: str, version: str, changelog: str) -> bool:
+def post_changelog(owner: str, repository: str, version: str, changelog: str, prerelease: bool) -> bool:
     """
     Posts the changelog to the current hvcs release API
 
@@ -800,10 +805,11 @@ def post_changelog(owner: str, repository: str, version: str, changelog: str) ->
     :param repository: The repository name
     :param version: A string with the new version
     :param changelog: A string with the changelog in correct format
+    :param prerelease: A boolean indicating if the release is a pre-release
     :return: a tuple with success status and payload from hvcs
     """
     logger.debug(f"Posting release changelog for {owner}/{repository} {version}")
-    return get_hvcs().post_release_changelog(owner, repository, version, changelog)
+    return get_hvcs().post_release_changelog(owner, repository, version, changelog, prerelease)
 
 
 def upload_to_release(owner: str, repository: str, version: str, path: str) -> bool:
