@@ -450,6 +450,41 @@ class GithubReleaseTests(TestCase):
                 self.assertTrue(status)
 
     @responses.activate
+    @mock.patch("semantic_release.hvcs.Github.token", return_value="super-token")
+    def test_should_post_changelog_with_prerelease_flag(self, mock_token):
+        with NamedTemporaryFile("w") as netrc_file:
+            netrc_file.write("machine api.github.com\n")
+            netrc_file.write("login username\n")
+            netrc_file.write("password password\n")
+
+            netrc_file.flush()
+
+            def request_callback(request):
+                payload = json.loads(request.body)
+                self.assertEqual(payload["tag_name"], "v1.0.0-beta.1")
+                self.assertEqual(payload["body"], "text")
+                self.assertEqual(payload["draft"], False)
+                self.assertEqual(payload["prerelease"], True)
+                self.assertEqual(
+                    "token super-token", request.headers.get("Authorization")
+                )
+
+                return 201, {}, json.dumps({})
+
+            responses.add_callback(
+                responses.POST,
+                self.url,
+                callback=request_callback,
+                content_type="application/json",
+            )
+
+            with mock.patch.dict(os.environ, {"NETRC": netrc_file.name}):
+                status = Github.post_release_changelog(
+                    "relekang", "rmoq", "1.0.0-beta.1", "text", True
+                )
+                self.assertTrue(status)
+
+    @responses.activate
     def test_should_return_false_status_if_it_failed(self):
         responses.add(
             responses.POST,
@@ -687,6 +722,39 @@ class GiteaReleaseTests(TestCase):
 
             with mock.patch.dict(os.environ, {"NETRC": netrc_file.name}):
                 status = Gitea.post_release_changelog("gitea", "tea", "1.0.0", "text", False)
+                self.assertTrue(status)
+
+    @responses.activate
+    @mock.patch("semantic_release.hvcs.Gitea.token", return_value="super-token")
+    def test_should_post_changelog_with_prerelease_flag(self, mock_token):
+        with NamedTemporaryFile("w") as netrc_file:
+            netrc_file.write("machine gitea.com\n")
+            netrc_file.write("login username\n")
+            netrc_file.write("password password\n")
+
+            netrc_file.flush()
+
+            def request_callback(request):
+                payload = json.loads(request.body)
+                self.assertEqual(payload["tag_name"], "v1.0.0-beta.1")
+                self.assertEqual(payload["body"], "text")
+                self.assertEqual(payload["draft"], False)
+                self.assertEqual(payload["prerelease"], True)
+                self.assertEqual(
+                    "token super-token", request.headers.get("Authorization")
+                )
+
+                return 201, {}, json.dumps({})
+
+            responses.add_callback(
+                responses.POST,
+                self.url,
+                callback=request_callback,
+                content_type="application/json",
+            )
+
+            with mock.patch.dict(os.environ, {"NETRC": netrc_file.name}):
+                status = Gitea.post_release_changelog("gitea", "tea", "1.0.0-beta.1", "text", True)
                 self.assertTrue(status)
 
     @responses.activate
